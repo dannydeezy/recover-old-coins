@@ -2,10 +2,10 @@
 
 ### Testnet:
 ```
-node getcoins.js hex-test-keys.csv testnet
+node check-addresses.js hex-test-keys.csv testnet
 ```
 
 ### Mainnet:
 ```
-node getcoins.js hex-test-keys.csv mainnet
+node check-addresses.js hex-test-keys.csv mainnet
 ```
