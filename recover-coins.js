@@ -26,40 +26,48 @@ const checkKeys = async (keys) => {
       const info = await checkAddressInfo(address);
       const balance = info.total.balance_int
       if (balance > 0) {
-        console.log(`~~~~~ Success! Balance ${balance / SATS_PER_BTC} btc found for ${address} (${type}) ~~~~~`)
-        const spendableUtxos = await utils.getSpendableUtxos(address, info.transactions, apiBase)
+        console.log(`~~~~~ Success! Balance ${balance / SATS_PER_BTC} btc found for ${address}  ~~~~~`)
+        const spendableUtxos = await utils.getSpendableUtxos(address, info.transactions, blockstreamApiBase)
         for (const utxo of spendableUtxos) {
           utxo.prvKeyIndex = i
           utxo.addressType = type
         }
         allSpendableUtxos = allSpendableUtxos.concat(spendableUtxos)
       } else {
-        console.log(`No balance found for ${address}. Total received: ${info.total.received_int / SATS_PER_BTC}. Total spent: ${info.total.spent_int / SATS_PER_BTC}. (${type})`)
+        console.log(`No balance found for ${address}. Total received: ${info.total.received_int / SATS_PER_BTC}. Total spent: ${info.total.spent_int / SATS_PER_BTC}`)
       }
     }
   }
   return allSpendableUtxos
 }
 
+const validateDestinations = () => {
+  let total = 0
+  for (const address of Object.keys(destinations)) {
+    total += destinations[address]
+  }
+  if (total !== 1) {
+    throw new Error ("Destination percentages must add up to 1")
+  }
+}
+
 const parseArguments = () => {
   if (process.argv[3] === 'mainnet') {
     console.log(`\nUsing mainnet...`)
     network = bitcoin.networks.bitcoin
-    apiBase = 'https://api.smartbit.com.au/v1/blockchain';
+    apiBase = 'https://api.smartbit.com.au/v1/blockchain'
+    blockstreamApiBase = 'https://blockstream.info/api'
   } else {
     console.log(`\nUsing testnet...`)
     network = bitcoin.networks.testnet
-    apiBase = 'https://testnet-api.smartbit.com.au/v1/blockchain';
+    apiBase = 'https://testnet-api.smartbit.com.au/v1/blockchain'
+    blockstreamApiBase = 'https://blockstream.info/testnet/api'
   }
-  
-  if (process.argv.length > 4 && process.argv[4] == 'recoverto' && process.argv[5]) {
-    recoverToAddress = process.argv[5]
-    console.log(`Will create recovery transaction to: ${recoverToAddress}`)
-  }
+  destinations = JSON.parse(process.argv[4])
+  validateDestinations()
 }
 
-let network, apiBase
-let recoverToAddress = null
+let network, apiBase, blockstreamApiBase, destinations
 async function go() {
   parseArguments()
   const keys = getKeysFromFilename(process.argv[2])
@@ -70,7 +78,7 @@ async function go() {
   }
   const totalBtc = spendableUtxos.map(it => it.satoshis).reduce((a,b) => a + b) / SATS_PER_BTC
   console.log(`\n\nTotal recovery amount: ${totalBtc} btc\n\n`)
-  const recoveryHex = utils.createAndSignRecoveryTransaction(spendableUtxos, recoverToAddress, keys, RECOVERY_SATS_PER_BYTE, network)
+  const recoveryHex = utils.createAndSignRecoveryTransaction(spendableUtxos, destinations, keys, RECOVERY_SATS_PER_BYTE, network)
   console.log(`Recovery transaction hex (double check before broadcasting!):\n`)
   console.log(recoveryHex)
   console.log('\n\n')
