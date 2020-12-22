@@ -2,11 +2,10 @@ const fs = require('fs');
 const request = require('request-promise');
 const utils = require('./utils')
 const bitcoin = require('bitcoinjs-lib');
-const util = require('util')
 const SATS_PER_BTC = 100000000.0
 
 const checkAddressInfo = async (address) => {
-  const response = await request(`${apiBase}${address}`);
+  const response = await request(`${apiBase}/address/${address}`);
   //console.dir(JSON.parse(response))
   return JSON.parse(response).address;
 }
@@ -15,9 +14,9 @@ const getKeysFromFilename = (filename) => {
   return fs.readFileSync(filename).toString().split('\n')
 }
 
-const checkKeys = async (filename) => {
-  const keys = getKeysFromFilename(filename)
+const checkKeys = async (keys) => {
   const addressObjects = keys.map(it => utils.hexToAddresses(it, network));
+  let allSpendableUtxos = []
   for (let i = 0; i < addressObjects.length; i++) {
     const addressObject = addressObjects[i]
     console.log(`\nChecking private key at position ${i}:`)
@@ -27,23 +26,55 @@ const checkKeys = async (filename) => {
       const balance = info.total.balance_int
       if (balance > 0) {
         console.log(`~~~~~ Success! Balance ${balance / SATS_PER_BTC} btc found for ${address} (${type}) ~~~~~`)
-        console.log('Spendable utxos:')
-        console.dir(utils.getSpendableUtxos(address, info.transactions))
+        const spendableUtxos = await utils.getSpendableUtxos(address, info.transactions, apiBase)
+        for (const utxo of spendableUtxos) {
+          utxo.prvKeyIndex = i
+          utxo.addressType = type
+        }
+        allSpendableUtxos = allSpendableUtxos.concat(spendableUtxos)
       } else {
         console.log(`No balance found for ${address}. Total received: ${info.total.received_int / SATS_PER_BTC}. Total spent: ${info.total.spent_int / SATS_PER_BTC}. (${type})`)
       }
     }
   }
+  return allSpendableUtxos
+}
+
+const parseArguments = () => {
+  if (process.argv[3] === 'mainnet') {
+    console.log(`\nUsing mainnet...`)
+    network = bitcoin.networks.bitcoin
+    apiBase = 'https://api.smartbit.com.au/v1/blockchain';
+  } else {
+    console.log(`\nUsing testnet...`)
+    network = bitcoin.networks.testnet
+    apiBase = 'https://testnet-api.smartbit.com.au/v1/blockchain';
+  }
+  
+  if (process.argv.length > 4 && process.argv[4] == 'recoverto' && process.argv[5]) {
+    recoverToAddress = process.argv[5]
+    console.log(`Will create recovery transaction to: ${recoverToAddress}`)
+  }
 }
 
 let network, apiBase
-if (process.argv[3] === 'mainnet') {
-  console.log(`\nUsing mainnet...`)
-  network = bitcoin.networks.bitcoin
-  apiBase = 'https://api.smartbit.com.au/v1/blockchain/address/';
-} else {
-  console.log(`\nUsing testnet...`)
-  network = bitcoin.networks.testnet
-  apiBase = 'https://testnet-api.smartbit.com.au/v1/blockchain/address/';
+let recoverToAddress = null
+async function go() {
+  parseArguments()
+  const keys = getKeysFromFilename(process.argv[2])
+  const spendableUtxos = await checkKeys(keys)
+  //console.log(`\nAll spendable utxos:`)
+  //console.dir(spendableUtxos)
+  if (spendableUtxos.length === 0) {
+    console.log(`\n\nNo spendable utxos to recover.\n\n`)
+    return
+  }
+  const totalBtc = spendableUtxos.map(it => it.satoshis).reduce((a,b) => a + b) / SATS_PER_BTC
+  console.log(`\n\nTotal recovery amount: ${totalBtc} btc\n\n`)
+  const recoveryHex = utils.createAndSignRecoveryTransaction(spendableUtxos, recoverToAddress, keys, network)
+  console.log(`Recovery transaction hex (double check before broadcasting!):\n`)
+  console.log(recoveryHex)
+  console.log('\n\n')
 }
-checkKeys(process.argv[2])
+
+go()
