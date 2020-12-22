@@ -53,8 +53,8 @@ const getSpendableUtxos = async (address, transactions, apiBase) => {
 const createAndSignRecoveryTransaction = (spendableUtxos, toAddress, keys, recoverySatsPerByte, network) => {
     const psbt = new bitcoin.Psbt({ network })
     const totalSats = spendableUtxos.map(it => it.satoshis).reduce((a,b) => a+b)
-    // 142 bytes per input should be good, plus 58 bytes overhead.
-    const minerFeeSats = recoverySatsPerByte * (142*spendableUtxos.length + 58)
+    // 148 bytes per input should be good, plus 58 bytes overhead.
+    const minerFeeSats = recoverySatsPerByte * (148*spendableUtxos.length + 58)
     psbt.addOutput({
         address: toAddress,
         value: totalSats - minerFeeSats,
