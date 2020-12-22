@@ -3,7 +3,7 @@ const request = require('request-promise');
 const utils = require('./utils')
 const bitcoin = require('bitcoinjs-lib');
 const SATS_PER_BTC = 100000000.0
-const RECOVERY_SATS_PER_BYTE = 10
+const RECOVERY_SATS_PER_BYTE = 100
 
 const checkAddressInfo = async (address) => {
   const response = await request(`${apiBase}/address/${address}`);
