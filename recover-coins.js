@@ -2,6 +2,7 @@ const fs = require('fs');
 const request = require('request-promise');
 const utils = require('./utils')
 const bitcoin = require('bitcoinjs-lib');
+const crypto = require('crypto');
 const SATS_PER_BTC = 100000000.0
 const RECOVERY_SATS_PER_BYTE = 100
 
@@ -67,10 +68,20 @@ const parseArguments = () => {
   validateDestinations()
 }
 
+const hashKeys = (keys) => {
+  return keys.map(it => 
+    crypto.createHash('sha256').update(it).digest('hex')
+  )
+}
+
 let network, apiBase, blockstreamApiBase, destinations
 async function go() {
   parseArguments()
-  const keys = getKeysFromFilename(process.argv[2])
+  let keys = getKeysFromFilename(process.argv[2])
+  if (process.env.HASH_KEYS) {
+    console.log('Hashing the keys...')
+    keys = hashKeys(keys)
+  }
   const spendableUtxos = await checkKeys(keys)
   if (spendableUtxos.length === 0) {
     console.log(`\n\nNo spendable utxos to recover.\n\n`)
