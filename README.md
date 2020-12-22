@@ -9,5 +9,5 @@ node recover-coins.js hex-test-keys.csv testnet recoverto 2MtWGAkSvNkN6unhXurovm
 ### Mainnet:
 ```
 node recover-coins.js hex-test-keys.csv mainnet
-node recover-coins.js hex-test-keys.csv mainnet recoverto bc1qu2k8dpyggzzedvgr8emf9pz5gk4hywpcwyj3dg27rex00gdjwqrskm4842
+node recover-coins.js hex-test-keys.csv mainnet recoverto bc1q9spuh7gq7vgzm70hnmyw73mny769z6wc5f97vwaqphjyuzmnvuvscrpw08
 ```
