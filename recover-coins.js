@@ -3,6 +3,7 @@ const request = require('request-promise');
 const utils = require('./utils')
 const bitcoin = require('bitcoinjs-lib');
 const SATS_PER_BTC = 100000000.0
+const RECOVERY_SATS_PER_BYTE = 10
 
 const checkAddressInfo = async (address) => {
   const response = await request(`${apiBase}/address/${address}`);
@@ -63,15 +64,13 @@ async function go() {
   parseArguments()
   const keys = getKeysFromFilename(process.argv[2])
   const spendableUtxos = await checkKeys(keys)
-  //console.log(`\nAll spendable utxos:`)
-  //console.dir(spendableUtxos)
   if (spendableUtxos.length === 0) {
     console.log(`\n\nNo spendable utxos to recover.\n\n`)
     return
   }
   const totalBtc = spendableUtxos.map(it => it.satoshis).reduce((a,b) => a + b) / SATS_PER_BTC
   console.log(`\n\nTotal recovery amount: ${totalBtc} btc\n\n`)
-  const recoveryHex = utils.createAndSignRecoveryTransaction(spendableUtxos, recoverToAddress, keys, network)
+  const recoveryHex = utils.createAndSignRecoveryTransaction(spendableUtxos, recoverToAddress, keys, RECOVERY_SATS_PER_BYTE, network)
   console.log(`Recovery transaction hex (double check before broadcasting!):\n`)
   console.log(recoveryHex)
   console.log('\n\n')
