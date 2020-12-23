@@ -13,7 +13,17 @@ const checkAddressInfo = async (address) => {
 }
 
 const getKeysFromFilename = (filename) => {
-  return fs.readFileSync(filename).toString().split('\n')
+  const rawKeys = fs.readFileSync(filename).toString().split('\n').map(it => it.trim())
+  if (process.env.HASH_KEYS) return rawKeys
+  let filteredKeys = []
+  for (const key of rawKeys) {
+    if (key.length !== 64) {
+      console.log(`Skipping key ${key} with length ${key.length}`)
+    } else {
+      filteredKeys.push(key)
+    }
+  }
+  return filteredKeys
 }
 
 const checkKeys = async (keys) => {
